@@ -126,10 +126,24 @@ class Menu:
         2) Sandbox mode''' + Fore.RESET)
         choice = input()
         if choice == '1':
-            pass
+            self.random_encounter()
         if choice == '2':
             self.sandbox_mode()
         else:
             print('Not an option.')
             self.menu()
 
+    def random_encounter(self):
+        self.engine.generate_blue(random.randint(5, 10))
+        self.engine.display()
+        print(Fore.LIGHTYELLOW_EX + "That's enemy army! Now, place your units...")
+        while True:
+            user_place = input('Where to place red unit? Example: 5,8 where 5 is X and 8 is Y\n\nType "start" to start when your army is ready: ')
+            if user_place.lower() == 'start':
+                break
+            coords = user_place.split(',')
+            print(user_place)
+            unit = Unit(name='Red', hp=1, y=int(coords[1]), x=int(coords[0]), damage=1, map_engine=self.engine, team='Red')
+            self.engine.display()
+            print('Done!')
+        self.engine.start_game()
