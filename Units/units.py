@@ -1,8 +1,11 @@
-from colorama import init, Fore, Back, Style
+from colorama import Fore
 import time
+import copy
+
+
 class Unit:
     
-    def __init__(self, name, hp, damage, team, y, x, map_engine):
+    def __init__(self, name, hp, damage, team, y, x, map_engine, cost):
         self.name = name
         self.hp = hp
         self.y = y
@@ -10,14 +13,16 @@ class Unit:
         self.damage = damage
         self.map_eng = map_engine
         self.team = team
+        self.cost = cost
         self.symbol = {'blue': Fore.LIGHTCYAN_EX + "{}".format(name[0].upper()) + Fore.RESET,
                        'red': Fore.LIGHTRED_EX + '{}'.format(name[0].upper()) + Fore.RESET}.get(self.team.lower())
         team_dict = {'blue': map_engine.alive_list[1],
                      'red': map_engine.alive_list[0]}
         self.team_dict = team_dict
+        self.side = {'blue': 'left',
+                     'red': 'right'}.get(team.lower())
         team_dict.get(self.team.lower()).append(self)
         map_engine.place_both(y, x, self, self.symbol)
-
 
     def check_inbounds(self, y, x):
         if y > self.map_eng.size_y - 1 or y < 0 or x > self.map_eng.size_x - 1 or x < 0:
@@ -103,6 +108,8 @@ class RangedUnit(Unit):
                 if hasattr(x, 'team') and x.team != self.team:
                     self.attack(x)
                     return
+        self.move('down')
+        self.move(self.side)
 
     def attack(self, entity):
         entity.hp -= self.damage
@@ -112,3 +119,71 @@ class RangedUnit(Unit):
         time.sleep(1)
         if entity.hp <= 0:
             entity.die()
+
+
+class ExplosiveUnit(Unit):
+
+    def check_enemies(self):
+        coord_list = [self.map_eng.techmap[self.y][self.x:10],
+                      self.map_eng.techmap[self.y + 1][self.x:10] if self.check_inbounds(self.y + 1, self.x) else [],
+                      self.map_eng.techmap[self.y - 1][self.x:10] if self.check_inbounds(self.y - 1, self.x) else []]
+        for y in coord_list:
+            for x in y:
+                if hasattr(x, 'team') and x.team != self.team:
+                    self.attack(x)
+                    return
+        self.move('down')
+        self.move(self.side)
+
+    def attack(self, entity):
+        coords_list = [[entity.y, entity.x],
+                       [entity.y+1, entity.x],
+                       [entity.y+1, entity.x+1],
+                       [entity.y+1, entity.x-1],
+                       [entity.y, entity.x+1],
+                       [entity.y, entity.x-1],
+                       [entity.y-1, entity.x],
+                       [entity.y-1, entity.x-1],
+                       [entity.y-1, entity.x+1]]
+        close_quarters = [[self.x+1, self.y],
+                          [self.x-1, self.y],
+                          [self.x, self.y+1],
+                          [self.x, self.y-1]]
+        for coord in close_quarters:
+            try:
+                if self.map_eng.check_entity(coord[1], coord[0]):
+                    self.map_eng.techmap[coord[1]][coord[0]].hp -= 2
+                    print(self.name + ' attacks' + self.map_eng.techmap[coord[1]][coord[0]].name + '!')
+                    return
+            except IndexError:
+                continue
+        map_copy = copy.deepcopy(self.map_eng.gamemap)
+        for coord in coords_list:
+            try:
+                map_copy[coord[0]][coord[1]] = Fore.LIGHTYELLOW_EX + '*' + Fore.RESET
+            except IndexError:
+                continue
+        print('\n' * 18)
+        for y in map_copy:
+            print('  '.join(y))
+        for coord in coords_list:
+            try:
+                position = self.map_eng.techmap[coord[0]][coord[1]]
+                if hasattr (position, 'hp'):
+                    position.hp -= self.damage
+                    print('{} explodes {}! Damage: {},  HP of {} left: {}!'.format(
+                        self.name,
+                        position.name,
+                        self.damage,
+                        position.name,
+                        position.hp))
+
+                    time.sleep(1)
+
+                    if position.hp <= 0:
+                        position.die()
+
+            except IndexError:
+                continue
+
+        time.sleep(1)
