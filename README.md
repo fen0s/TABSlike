@@ -8,10 +8,10 @@ I decided not to use much libraries and I try to make it work with mostly standa
 
 # Features included:
 1. Menu
-2. Two kinds of units (ranged and melee)
-3. Very simple AI
+2. Various kinds of units. About 5 right now.
+3. Very simple AI... which works pretty badly.
 4. Coloring with colorama library
-5. Two modes
+5. Three modes!
 
 # Features planned:
 1. Economics (gold to spend on units)
