@@ -49,7 +49,11 @@ class Unit:
 # **** Attack an entity. Entity must be Unit class, don't forget it! ****
     def attack(self, entity):
         entity.hp -= self.damage
-        self.map_eng.display()
+        entity_tile = copy.deepcopy(self.map_eng.gamemap)
+        entity_tile[entity.y][entity.x] = Fore.LIGHTMAGENTA_EX + '/' + Fore.RESET
+        print('\n' * 18)
+        for y in entity_tile:
+            print('  '.join(y))
         print('{} attacks {}! Damage: {},  HP of {} left: {}!'.format(
             self.name, entity.name, self.damage, entity.name, entity.hp))
         time.sleep(1)
@@ -59,6 +63,7 @@ class Unit:
 # **** Deletes unit. On both map and whole program. ****
     def die(self):
         print('Oh no! {} dies!'.format(self.name))
+        time.sleep(0.5)
         self.map_eng.make_empty(self.y, self.x)
         self.team_dict.get(self.team.lower()).remove(self)
 
@@ -95,25 +100,43 @@ class Unit:
             self.move('left')
         if enemy_x > self.x:
             self.move('right')
+        self.check_attackable()
 
 
 class RangedUnit(Unit):
+    def __init__(self, name, hp, damage, team, y, x, map_engine, cost, reload_time):
+        Unit.__init__(self, name, hp, damage, team, y, x, map_engine, cost)
+        self.reload_time = reload_time
+        self.reload = reload_time
 
     def check_enemies(self):
         coord_list = [self.map_eng.techmap[self.y],
                       self.map_eng.techmap[self.y+1] if self.check_inbounds(self.y+1, self.x) else [],
                       self.map_eng.techmap[self.y-1] if self.check_inbounds(self.y-1, self.x) else []]
+        if self.reload < self.reload_time:
+            self.reload += 1
+            print(self.name + ' reloading....')
+            time.sleep(0.5)
+            return
         for y in coord_list:
             for x in y:
-                if hasattr(x, 'team') and x.team != self.team:
+                if hasattr(x, 'team') and x.team != self.team and self.reload == self.reload_time:
                     self.attack(x)
+                    self.reload = 0
                     return
-        self.move('down')
-        self.move(self.side)
+        for y in self.map_eng.techmap:
+            for x in y:
+                if hasattr(x, 'team') and x.team != self.team:
+                    self.move_on_enemy(x.y, x.x)
+                    return
 
     def attack(self, entity):
         entity.hp -= self.damage
-        self.map_eng.display()
+        entity_tile = copy.deepcopy(self.map_eng.gamemap)
+        entity_tile[entity.y][entity.x] = Fore.LIGHTYELLOW_EX + '*' + Fore.RESET
+        print('\n' * 18)
+        for y in entity_tile:
+            print('  '.join(y))
         print('{} shoots {}! Damage: {},  HP of {} left: {}!'.format(
             self.name, entity.name, self.damage, entity.name, entity.hp))
         time.sleep(1)
@@ -121,19 +144,54 @@ class RangedUnit(Unit):
             entity.die()
 
 
-class ExplosiveUnit(Unit):
+# NOT DONE!
+class Bullet:
+    def __init__(self, enemy_y, enemy_x, engine, y, x, damage):
+        self.enemy_y = enemy_y
+        self.enemy_x = enemy_x
+        self.map = copy.deepcopy(engine.gamemap)
+        self.y = y
+        self.x = x
+        self.damage = damage
+        self.previous_position = self.map[self.y][self.x]
+        self.shoot()
 
-    def check_enemies(self):
-        coord_list = [self.map_eng.techmap[self.y][self.x:10],
-                      self.map_eng.techmap[self.y + 1][self.x:10] if self.check_inbounds(self.y + 1, self.x) else [],
-                      self.map_eng.techmap[self.y - 1][self.x:10] if self.check_inbounds(self.y - 1, self.x) else []]
-        for y in coord_list:
-            for x in y:
-                if hasattr(x, 'team') and x.team != self.team:
-                    self.attack(x)
-                    return
-        self.move('down')
-        self.move(self.side)
+    def shoot(self):
+        while not self.check_attackable():
+            self.move_on_enemy(self.enemy_y, self.enemy_x)
+            self.map_eng.display()
+            time.sleep(0.5)
+
+    def check_attackable(self):
+        if self.y == self.enemy_y and self.x == self.enemy_x:
+            return True
+        return False
+
+    def move_on_enemy(self, enemy_y, enemy_x):
+        if enemy_y < self.y:
+            self.move('up')
+        if enemy_y > self.y:
+            self.move('down')
+        if enemy_x < self.x:
+            self.move('left')
+        if enemy_x > self.x:
+            self.move('right')
+
+    def move(self, side):
+        if self.check_attackable():
+            return
+        sides = {'right': [0, 1],
+                 'left': [0, -1],
+                 'up': [-1, 0],
+                 'down': [1, 0]}
+        move_side = sides.get(side)
+        self.map[self.y][self.x] = '.'
+        self.y += move_side[0]
+        self.x += move_side[1]
+        self.map(self.y, self.x, Fore.LIGHTYELLOW_EX + '*' + Fore.RESET)
+
+
+class ExplosiveUnit(RangedUnit):
 
     def attack(self, entity):
         coords_list = [[entity.y, entity.x],
@@ -151,16 +209,21 @@ class ExplosiveUnit(Unit):
                           [self.x, self.y-1]]
         for coord in close_quarters:
             try:
-                if self.map_eng.check_entity(coord[1], coord[0]):
+                if hasattr(self.map_eng.techmap[coord[1]][coord[0]], 'team') and \
+                  self.map_eng.techmap[coord[1]][coord[0]].team != self.team:
+
                     self.map_eng.techmap[coord[1]][coord[0]].hp -= 2
+                    self.map_eng.display()
                     print(self.name + ' attacks' + self.map_eng.techmap[coord[1]][coord[0]].name + '!')
+                    time.sleep(0.5)
                     return
             except IndexError:
                 continue
         map_copy = copy.deepcopy(self.map_eng.gamemap)
         for coord in coords_list:
             try:
-                map_copy[coord[0]][coord[1]] = Fore.LIGHTYELLOW_EX + '*' + Fore.RESET
+                if self.check_inbounds(coord[0], coord[1]):
+                    map_copy[coord[0]][coord[1]] = Fore.LIGHTYELLOW_EX + '*' + Fore.RESET
             except IndexError:
                 continue
         print('\n' * 18)
@@ -169,7 +232,7 @@ class ExplosiveUnit(Unit):
         for coord in coords_list:
             try:
                 position = self.map_eng.techmap[coord[0]][coord[1]]
-                if hasattr (position, 'hp'):
+                if hasattr(position, 'hp') and self.check_inbounds(coord[0], coord[1]):
                     position.hp -= self.damage
                     print('{} explodes {}! Damage: {},  HP of {} left: {}!'.format(
                         self.name,
