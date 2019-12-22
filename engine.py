@@ -134,33 +134,50 @@ class Menu:
 
     def sandbox_mode(self):
         user_unit = ['Warrior']
+        self.engine.display()
         while True:
-            user_place = input('Where to place red unit? Example: 5,8 where 5 is X and 8 is Y\n\n'
-                               'Type "unit" to choose unit\n\n'
-                               'Type "done" when all red units are placed: ')
-            if user_place.lower() == 'done':
-                break
+            user_place = input('Where to place Red unit? Example: 5,8 where 5 is X and 8 is Y'
+                               '\n\n'
+                               'Type "unit" to select an unit'
+                               '\n\n'
+                               'Type "done" when your army is ready: ')
             if user_place.lower() == 'unit':
                 user_unit = self.choose_unit()
                 continue
+            if user_place.lower() == 'done':
+                break
             coords = user_place.split(',')
-            self.engine.unitdict.get(user_unit[0])(y=int(coords[1]), x=int(coords[0]), team='Red')
+            try:
+                if int(coords[0]) > self.engine.size_x / 2 or self.engine.check_entity(int(coords[0]), int(coords[1])):
+                    print(Fore.RED + '\nPosition unavialable!\n' + Fore.RESET)
+                    continue
+                self.engine.unitdict.get(user_unit[0])(y=int(coords[1]), x=int(coords[0]), team='Red')
+            except (ValueError, IndexError):
+                print(Fore.RED + 'Position unavailable!' + Fore.RESET)
+                continue
             self.engine.display()
             print('Done!')
 
         while True:
-            user_place = input('Where to place blue unit? Example: 5,8 where 5 is X and 8 is Y'
+            user_place = input('Where to place Blue unit? Example: 5,8 where 5 is X and 8 is Y'
                                '\n\n'
-                               'Type "unit" to choose unit'
+                               'Type "unit" to select an unit'
                                '\n\n'
-                               'Type "start" when all blue units are placed to start the game: ')
-            if user_place.lower() == 'start':
-                break
+                               'Type "start" when your army is ready to start the game: ')
             if user_place.lower() == 'unit':
                 user_unit = self.choose_unit()
                 continue
+            if user_place.lower() == 'start':
+                self.engine.start_game()
             coords = user_place.split(',')
-            self.engine.unitdict.get(user_unit[0])(y=int(coords[1]), x=int(coords[0]), team='Blue')
+            try:
+                if int(coords[0]) < self.engine.size_x / 2 or self.engine.check_entity(int(coords[0]), int(coords[1])):
+                    print(Fore.RED + '\nPosition unavialable!\n' + Fore.RESET)
+                    continue
+                self.engine.unitdict.get(user_unit[0])(y=int(coords[1]), x=int(coords[0]), team='Blue')
+            except (ValueError, IndexError):
+                print(Fore.RED + 'Position unavailable!' + Fore.RESET)
+                continue
             self.engine.display()
             print('Done!')
         self.engine.start_game()
@@ -192,8 +209,8 @@ class Menu:
 
     def random_encounter(self):
         blue_budget = random.randint(2000, 4000)
-        self.engine.generate_blue(blue_budget)
         red_budget = round(blue_budget * 0.7)
+        self.engine.generate_blue(blue_budget)
         self.engine.display()
         print(Fore.LIGHTYELLOW_EX + "That's enemy army! Now, place your units..." + Fore.RESET)
         print('Your budget: {}'.format(red_budget))

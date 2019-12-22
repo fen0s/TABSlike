@@ -100,7 +100,6 @@ class Unit:
             self.move('left')
         if enemy_x > self.x:
             self.move('right')
-        self.check_attackable()
 
 
 class RangedUnit(Unit):
@@ -214,8 +213,8 @@ class ExplosiveUnit(RangedUnit):
 
                     self.map_eng.techmap[coord[1]][coord[0]].hp -= 2
                     self.map_eng.display()
-                    print(self.name + ' attacks' + self.map_eng.techmap[coord[1]][coord[0]].name + '!')
-                    time.sleep(0.5)
+                    print(self.name + ' attacks ' + self.map_eng.techmap[coord[1]][coord[0]].name + '!' + ' Damage: 2')
+                    time.sleep(1)
                     return
             except IndexError:
                 continue
