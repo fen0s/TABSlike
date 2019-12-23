@@ -131,11 +131,7 @@ class RangedUnit(Unit):
 
     def attack(self, entity):
         entity.hp -= self.damage
-        entity_tile = copy.deepcopy(self.map_eng.gamemap)
-        entity_tile[entity.y][entity.x] = Fore.LIGHTYELLOW_EX + '*' + Fore.RESET
-        print('\n' * 18)
-        for y in entity_tile:
-            print('  '.join(y))
+        Bullet(enemy_y=entity.y, enemy_x=entity.x, y=self.y, x=self.x, engine=self.map_eng)
         print('{} shoots {}! Damage: {},  HP of {} left: {}!'.format(
             self.name, entity.name, self.damage, entity.name, entity.hp))
         time.sleep(1)
@@ -143,23 +139,23 @@ class RangedUnit(Unit):
             entity.die()
 
 
-# NOT DONE!
 class Bullet:
-    def __init__(self, enemy_y, enemy_x, engine, y, x, damage):
+    def __init__(self, enemy_y, enemy_x, engine, y, x):
         self.enemy_y = enemy_y
         self.enemy_x = enemy_x
         self.map = copy.deepcopy(engine.gamemap)
         self.y = y
         self.x = x
-        self.damage = damage
-        self.previous_position = self.map[self.y][self.x]
+        self.previous_position = copy.deepcopy(self.map[self.y][self.x])
         self.shoot()
 
     def shoot(self):
         while not self.check_attackable():
             self.move_on_enemy(self.enemy_y, self.enemy_x)
-            self.map_eng.display()
-            time.sleep(0.5)
+            print('\n' * 20)
+            for y in self.map:
+                print('  '.join(y))
+            time.sleep(0.105)
 
     def check_attackable(self):
         if self.y == self.enemy_y and self.x == self.enemy_x:
@@ -184,10 +180,11 @@ class Bullet:
                  'up': [-1, 0],
                  'down': [1, 0]}
         move_side = sides.get(side)
-        self.map[self.y][self.x] = '.'
+        self.map[self.y][self.x] = self.previous_position
         self.y += move_side[0]
         self.x += move_side[1]
-        self.map(self.y, self.x, Fore.LIGHTYELLOW_EX + '*' + Fore.RESET)
+        self.previous_position = copy.deepcopy(self.map[self.y][self.x])
+        self.map[self.y][self.x] = Fore.LIGHTYELLOW_EX + '*' + Fore.RESET
 
 
 class ExplosiveUnit(RangedUnit):
