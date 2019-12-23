@@ -14,8 +14,8 @@ I decided not to use much libraries and I try to make it work with mostly standa
 5. Three modes!
 
 # Features planned:
-1. Economics (gold to spend on units)
-2. Different kinds of units (AoE units, knockbacking units, etc)
+1. ~~Economics (gold to spend on units)~~ Done, but simple for now.
+2. Different kinds of units
 3. Jokes like in original TABS :)
 4. Status effects
 5. Sounds
