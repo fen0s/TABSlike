@@ -4,7 +4,7 @@ A python ASCII roguelike game inspired by Totally Accurate Battle Simulator.
 TABS is a semi-zero-player strategy game, where you don't *control* the units, but *place* them instead and watch them fight the enemy units. I decided to make my own game in that style, but that time, ASCII. Because why not? :)
 I decided not to use much libraries and I try to make it work with mostly standard python tools.
 
-![alt text](https://sun9-58.userapi.com/c856132/v856132617/1a1add/zKH5I6cFwqI.jpg)
+![alt text](https://media.discordapp.net/attachments/205277826788622337/662221621238431754/unknown.png)
 
 # Features included:
 1. Menu
