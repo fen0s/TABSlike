@@ -55,7 +55,7 @@ class Bullet:
     def shoot(self):
         while not self.check_attackable():
             self.move_on_enemy(self.enemy_y, self.enemy_x)
-            print('\n' * 20)
+            self.map_eng.flush()
             for y in self.map:
                 print('  '.join(y))
             time.sleep(0.105)

@@ -1,6 +1,3 @@
-# import module
-from . import RangedUnit
-# import class from module
 from .RangedUnit import RangedUnit
 from colorama import Fore
 import time
@@ -40,7 +37,7 @@ class ExplosiveUnit(RangedUnit):
                     map_copy[coord[0]][coord[1]] = Fore.LIGHTYELLOW_EX + '*' + Fore.RESET
             except IndexError:
                 continue
-        print('\n' * 18)
+        self.map_eng.flush()
         for y in map_copy:
             print('  '.join(y))
         for coord in coords_list:

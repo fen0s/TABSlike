@@ -6,7 +6,7 @@ from colorama import Fore
 import time
 from pynput import keyboard
 import copy
-
+import os
 
 class GameMap:
 
@@ -25,8 +25,11 @@ class GameMap:
                          'Musketeer': lambda y, x, team: RangedUnit(name='Musketeer' + '_' + team, hp=4, y=y, x=x,
                                  damage=3.5, map_engine=self, team=team, cost=850, reload_time=2),
                          'Grenadier': lambda y, x, team: ExplosiveUnit(name='Grenadier' + '_' + team, hp=2, y=y, x=x,
-                                 damage=3, map_engine=self, team=team, cost=700, reload_time=3)
-                     }
+                                 damage=3, map_engine=self, team=team, cost=700, reload_time=3)}
+
+    def flush(self):
+        if os.system('cls') == 127:
+            os.system('clear')
 
     def start_game(self):
         while self.alive_list[0] and self.alive_list[1]:
@@ -34,6 +37,9 @@ class GameMap:
                 for unit in team:
                     unit.check_enemies()
                 self.display()
+        self.end_game()
+
+    def end_game(self):
         if self.alive_list[0] and not self.alive_list[1]:
             print("\n" + Fore.LIGHTRED_EX + 'Red' + Fore.LIGHTYELLOW_EX + ' team wins!')
         else:
@@ -41,13 +47,16 @@ class GameMap:
         input('Press ENTER to quit...')
         quit()
 
+    def spawn_unit(self, unit, y, x, team):
+        return self.unitdict.get(unit)(y=y, x=x, team=team)
+
     def generate_blue(self, budget):
         unit_names = list(self.unitdict.keys())
         while budget > 199:  # while budget < min_unit_price
             b_coords = [random.randint(round(self.size_y / 2), self.size_y - 1),
                         random.randint(round(self.size_x / 2), self.size_x - 1)]
             if not self.check_entity(b_coords[0], b_coords[1]):
-                unit = self.unitdict.get(random.choice(unit_names))(y=b_coords[0], x=b_coords[1], team='Blue')
+                unit = self.spawn_unit(unit=random.choice(unit_names), y=b_coords[0], x=b_coords[1], team='Blue')
                 if unit.cost > budget:
                     self.place_both(b_coords[0], b_coords[1], '.', '.')
                     self.alive_list[1].remove(unit)
@@ -62,7 +71,7 @@ class GameMap:
             r_coords = [random.randint(0, round(self.size_y / 2) - 1),
                         random.randint(0, round(self.size_x / 2) - 1)]
             if not self.check_entity(r_coords[0], r_coords[1]):
-                unit = self.unitdict.get(random.choice(unit_names))(y=r_coords[0], x=r_coords[1], team='Red')
+                unit = self.spawn_unit(unit=random.choice(unit_names), y=r_coords[0], x=r_coords[1], team='Red')
                 if unit.cost > budget:
                     self.place_both(r_coords[0], r_coords[1], '.', '.')
                     self.alive_list[0].remove(unit)
@@ -79,7 +88,7 @@ class GameMap:
 
     def display(self):
         """**** Display the map itself. ****"""
-        print('\n' * 18)
+        self.flush()
         for x in self.gamemap:
             print('  '.join(x))
         time.sleep(1)
@@ -109,8 +118,8 @@ class GameMap:
 
 # **** Check for presence of entity on tile in both gamemap and techmap.
     def check_entity(self, y, x):
-        if self.techmap[y][x] == '.' and self.gamemap[y][x] == '.' \
-                or self.gamemap[y][x] == Fore.LIGHTYELLOW_EX + 'X' + Fore.RESET and self.techmap[y][x] == '.':
+        if self.techmap[y][x] == '.' and self.gamemap[y][x] == '.' or \
+                self.gamemap[y][x] == Fore.LIGHTYELLOW_EX + 'X' + Fore.RESET and self.techmap[y][x] == '.':
             return False
         else:
             return True
@@ -124,7 +133,7 @@ class Menu:
     def choose_unit(self):
         user_unit = 'Warrior'
         while True:
-            print("\n" * 40)
+            self.engine.flush()
             user_prompt = input(
                 'This is choosing menu. Type "help" to see available units. '
                 'To choose an unit, type its name here. To exit menu, type "exit": ')
@@ -151,7 +160,7 @@ class Menu:
         marker_red = Marker(budget=math.inf, y=0, x=0,
                             inbound_x=self.engine.size_x - 1, engine=self.engine, team='Red')
         while True:
-            print("\n" * 40)
+            self.engine.flush()
             user_place = input('Type "place" to start unit placement. Current unit: {}'.format(marker_red.unit) +
                                '\n\n'
                                'Type "unit" to select an unit'
@@ -161,12 +170,12 @@ class Menu:
                 marker_red.unit = self.choose_unit()
                 continue
             if user_place.lower() == 'done':
-                print('\n' * 40)
+                self.engine.flush()
                 print(Fore.LIGHTRED_EX + "Red " + Fore.RESET + "team placed! Proceeding to "
                       + Fore.LIGHTCYAN_EX + "Blue " + Fore.RESET + "team!")
                 time.sleep(3)
                 print('\n' * 40)
-                marker_red.die()
+                self.engine.flush()
                 break
             if user_place.lower() == 'place':
                 time.sleep(0.20)
@@ -175,12 +184,11 @@ class Menu:
                 print("To place an unit, press ENTER. To stop placement, press ESC.")
                 while not marker_red.disabled:
                     time.sleep(0.01)
-                time.sleep(0.3)
                 continue
         marker_blue = Marker(budget=math.inf, y=0, x=self.engine.size_x - 1,
                              inbound_x=self.engine.size_x - 1, engine=self.engine, team='Blue')
         while True:
-            print("\n" * 40)
+            self.engine.flush()
             user_place = input('Type "place" to start unit placement. Current unit: {}'.format(marker_blue.unit) +
                                '\n\n'
                                'Type "unit" to select an unit'
@@ -199,7 +207,6 @@ class Menu:
                 print("To place an unit, press ENTER. To stop placement, press ESC.")
                 while not marker_blue.disabled:
                     time.sleep(0.01)
-                time.sleep(0.3)
                 continue
         self.engine.start_game()
 
@@ -238,7 +245,7 @@ class Menu:
         marker = Marker(budget=blue_budget * 0.7, y=0, x=0,
                         inbound_x=round(self.engine.size_x / 2) - 1, engine=self.engine, team='Red')
         while True:
-            print("\n" * 40)
+            self.engine.flush()
             user_place = input('Type "place" to start placing the units. Current unit: {}'.format(marker.unit) +
                                '\n\n'
                                'Type "unit" to select an unit'
@@ -246,19 +253,17 @@ class Menu:
                                'Type "start" to start when your army is ready: ')
             if user_place.lower() == 'unit':
                 marker.unit = self.choose_unit()
-                continue
             if user_place.lower() == 'start':
                 marker.die()
                 self.engine.start_game()
                 return
             if user_place.lower() == 'place':
-                time.sleep(0.20)
+                time.sleep(0.3)
                 marker.enable()
                 self.engine.display()
                 print("To place an unit, press ENTER. To stop placement, press ESC.")
                 while not marker.disabled:
-                    time.sleep(0.01)
-                continue
+                    time.sleep(0.5)
 
 
 class Marker:
@@ -296,7 +301,7 @@ class Marker:
             self.x += move_side[1]
             self.previous_position = copy.deepcopy(self.engine.gamemap[self.y][self.x])
             self.engine.gamemap[self.y][self.x] = Fore.LIGHTYELLOW_EX + 'X' + Fore.RESET
-            print("\n" * 20)
+            self.engine.flush()
             for y in self.engine.gamemap:
                 print('  '.join(y))
             try:
@@ -316,14 +321,14 @@ class Marker:
         if self.disabled:
             return
         if key == keyboard.Key.esc:
+            time.sleep(0.1)
             self.disable()
+            time.sleep(0.1)
         elif key == keyboard.Key.enter:
             if not self.engine.check_entity(self.y, self.x):
-                unit = self.engine.unitdict.get(self.unit)(x=self.x, y=self.y, team=self.team)
+                unit = self.engine.spawn_unit(y=self.y, x=self.x, team=self.team)
                 if unit.cost > self.budget:
-                    self.engine.gamemap[self.y][self.x] = Fore.LIGHTYELLOW_EX + 'X' + Fore.RESET
-                    self.engine.techmap[self.y][self.x] = '.'
-                    unit.team_dict.get(unit.team.lower()).remove(unit)
+                    self.remove_unit(unit)
                     print(Fore.RED + "Unit too expensive!" + Fore.RESET)
                     return
                 self.budget -= unit.cost
@@ -335,6 +340,11 @@ class Marker:
                 return
             else:
                 print(Fore.RED + "Unit already exists here!" + Fore.RESET)
+
+    def remove_unit(self, unit):
+        self.engine.gamemap[self.y][self.x] = Fore.LIGHTYELLOW_EX + 'X' + Fore.RESET
+        self.engine.techmap[self.y][self.x] = '.'
+        unit.team_dict.get(unit.team.lower()).remove(unit)
 
     def die(self):
         self.engine.gamemap[self.y][self.x] = self.previous_position
