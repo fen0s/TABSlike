@@ -5,7 +5,10 @@ from .Unit import Unit
 from colorama import Fore
 import time
 import copy
+
+
 class RangedUnit(Unit):
+
     def __init__(self, name, hp, damage, team, y, x, map_engine, cost, reload_time):
         Unit.__init__(self, name, hp, damage, team, y, x, map_engine, cost)
         self.reload_time = reload_time
@@ -47,15 +50,15 @@ class Bullet:
         self.enemy_y = enemy_y
         self.enemy_x = enemy_x
         self.map = copy.deepcopy(engine.gamemap)
+        self.engine = engine
         self.y = y
         self.x = x
         self.previous_position = copy.deepcopy(self.map[self.y][self.x])
         self.shoot()
-
     def shoot(self):
         while not self.check_attackable():
             self.move_on_enemy(self.enemy_y, self.enemy_x)
-            self.map_eng.flush()
+            self.engine.flush()
             for y in self.map:
                 print('  '.join(y))
             time.sleep(0.105)
