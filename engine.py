@@ -4,9 +4,9 @@ from Units.RangedUnit import RangedUnit
 import random
 from colorama import Fore
 import time
-from pynput import keyboard
-import copy
 import os
+from Utils.marker import Marker
+
 
 class GameMap:
 
@@ -14,7 +14,7 @@ class GameMap:
         self.size_x = size_x
         self.size_y = size_y
         self.gamemap = self.generate_map()
-        self.techmap = self.generate_map()
+        self.techmap = self.generate_techmap()
         self.alive_list = [[], []]
         self.unitdict = {'Warrior': lambda y, x, team: Unit(name='Warrior' + '_' + team, hp=2, y=y, x=x,
                                  damage=2, map_engine=self, team=team, cost=200),
@@ -28,10 +28,19 @@ class GameMap:
                                  damage=3, map_engine=self, team=team, cost=700, reload_time=3)}
 
     def flush(self):
+        """Flush the terminal display."""
         if os.system('cls') == 127:
             os.system('clear')
 
+    def generate_techmap(self):
+        """Generate blank techmap."""
+        gamemap = []
+        for _ in range(self.size_y):
+            gamemap.append([None for _ in range(self.size_x)])
+        return gamemap
+
     def start_game(self):
+        """Start the game. Goes on until one of teams dies."""
         while self.alive_list[0] and self.alive_list[1]:
             for team in self.alive_list:
                 for unit in team:
@@ -40,6 +49,7 @@ class GameMap:
         self.end_game()
 
     def end_game(self):
+        """End the game and announce the winner."""
         if self.alive_list[0] and not self.alive_list[1]:
             print("\n" + Fore.LIGHTRED_EX + 'Red' + Fore.LIGHTYELLOW_EX + ' team wins!')
         else:
@@ -47,18 +57,26 @@ class GameMap:
         input('Press ENTER to quit...')
         quit()
 
+    def check_inbounds(self, y, x):
+        if y > self.size_y - 1 or y < 0 or x > self.size_x - 1 or x < 0:
+            return False
+        else:
+            return True
+
     def spawn_unit(self, unit, y, x, team):
+        """Spawn unit, returning their instance from unitdict."""
         return self.unitdict.get(unit)(y=y, x=x, team=team)
 
     def generate_blue(self, budget):
+        """Generate blue team of the map. Generated on the right side."""
         unit_names = list(self.unitdict.keys())
-        while budget > 199:  # while budget < min_unit_price
+        while budget > 199:  # while budget > min_unit_price
             b_coords = [random.randint(round(self.size_y / 2), self.size_y - 1),
                         random.randint(round(self.size_x / 2), self.size_x - 1)]
             if not self.check_entity(b_coords[0], b_coords[1]):
                 unit = self.spawn_unit(unit=random.choice(unit_names), y=b_coords[0], x=b_coords[1], team='Blue')
                 if unit.cost > budget:
-                    self.place_both(b_coords[0], b_coords[1], '.', '.')
+                    self.place_both(b_coords[0], b_coords[1], None, '.')
                     self.alive_list[1].remove(unit)
                     continue
                 budget -= unit.cost
@@ -66,6 +84,7 @@ class GameMap:
                 continue
 
     def generate_red(self, budget):
+        """Generate red team of the map. Generated on the left side."""
         unit_names = list(self.unitdict.keys())
         while budget > 199:
             r_coords = [random.randint(0, round(self.size_y / 2) - 1),
@@ -73,7 +92,7 @@ class GameMap:
             if not self.check_entity(r_coords[0], r_coords[1]):
                 unit = self.spawn_unit(unit=random.choice(unit_names), y=r_coords[0], x=r_coords[1], team='Red')
                 if unit.cost > budget:
-                    self.place_both(r_coords[0], r_coords[1], '.', '.')
+                    self.place_both(r_coords[0], r_coords[1], None, '.')
                     self.alive_list[0].remove(unit)
                     continue
                 budget -= unit.cost
@@ -81,6 +100,7 @@ class GameMap:
                 continue
 
     def generate_map(self):
+        """Generate blank gamemap."""
         gamemap = []
         for _ in range(self.size_y):
             gamemap.append(['.' for _ in range(self.size_x)])
@@ -89,37 +109,38 @@ class GameMap:
     def display(self):
         """**** Display the map itself. ****"""
         self.flush()
-        for x in self.gamemap:
-            print('  '.join(x))
+        for row in self.gamemap:
+            print('  '.join(row))
         time.sleep(1)
 
     def place(self, entity, y, x):
         """**** Place the symbol on frontend map. ****"""
-        if -1 < x < self.size_x and -1 < y < self.size_y:
+        if self.check_inbounds(y, x):
             self.gamemap[y][x] = entity
         else:
             print('Coordinates out of index.')
 
     def place_techmap(self, entity, y, x):
-        """**** Place the unit on techmap. ****"""
-        if -1 < x < self.size_x and -1 < y < self.size_y:
+        """**** Place the unit instance on techmap. ****"""
+        if self.check_inbounds(y, x):
             self.techmap[y][x] = entity
         else:
             print('Coordinates out of index.')
 
     def make_empty(self, y, x):
-        """**** Make the tile empty in both "dimensions" - techmap and frontmap. ****"""
+        """**** Make the tile empty in both maps - techmap and frontmap. ****"""
         self.gamemap[y][x] = '.'
-        self.techmap[y][x] = '.'
+        self.techmap[y][x] = None
 
     def place_both(self, y, x, tech_place, game_place):
+        """Place something on both techmap and gamemap."""
         self.place(game_place, y, x)
         self.place_techmap(tech_place, y, x)
 
-# **** Check for presence of entity on tile in both gamemap and techmap.
     def check_entity(self, y, x):
-        if self.techmap[y][x] == '.' and self.gamemap[y][x] == '.' or \
-                self.gamemap[y][x] == Fore.LIGHTYELLOW_EX + 'X' + Fore.RESET and self.techmap[y][x] == '.':
+        """Check if the tile is empty. If it is, returns False. If it is not, returns True."""
+        if not self.techmap[y][x] and self.gamemap[y][x] == '.' or \
+                self.gamemap[y][x] == Fore.LIGHTYELLOW_EX + 'X' + Fore.RESET and not self.techmap[y][x]:
             return False
         else:
             return True
@@ -131,6 +152,7 @@ class Menu:
         self.menu()
 
     def choose_unit(self):
+        """Executes CLI interface of choosing an unit."""
         user_unit = 'Warrior'
         while True:
             self.engine.flush()
@@ -159,55 +181,12 @@ class Menu:
         import math
         marker_red = Marker(budget=math.inf, y=0, x=0,
                             inbound_x=self.engine.size_x - 1, engine=self.engine, team='Red')
-        while True:
-            self.engine.flush()
-            user_place = input('Type "place" to start unit placement. Current unit: {}'.format(marker_red.unit) +
-                               '\n\n'
-                               'Type "unit" to select an unit'
-                               '\n\n'
-                               'Type "done" when your army is ready: ')
-            if user_place.lower() == 'unit':
-                marker_red.unit = self.choose_unit()
-                continue
-            if user_place.lower() == 'done':
-                self.engine.flush()
-                print(Fore.LIGHTRED_EX + "Red " + Fore.RESET + "team placed! Proceeding to "
-                      + Fore.LIGHTCYAN_EX + "Blue " + Fore.RESET + "team!")
-                time.sleep(3)
-                print('\n' * 40)
-                self.engine.flush()
-                break
-            if user_place.lower() == 'place':
-                time.sleep(0.20)
-                marker_red.enable()
-                self.engine.display()
-                print("To place an unit, press ENTER. To stop placement, press ESC.")
-                while not marker_red.disabled:
-                    time.sleep(0.01)
-                continue
+        self.call_choosing_menu(marker_red)
+        print(Fore.LIGHTRED_EX + "\nRed" + Fore.RESET + " team placed! Proceeding to Blue team...")
+        time.sleep(3)
         marker_blue = Marker(budget=math.inf, y=0, x=self.engine.size_x - 1,
                              inbound_x=self.engine.size_x - 1, engine=self.engine, team='Blue')
-        while True:
-            self.engine.flush()
-            user_place = input('Type "place" to start unit placement. Current unit: {}'.format(marker_blue.unit) +
-                               '\n\n'
-                               'Type "unit" to select an unit'
-                               '\n\n'
-                               'Type "start" when your army is ready to start the game: ')
-            if user_place.lower() == 'unit':
-                marker_blue.unit = self.choose_unit()
-                continue
-            if user_place.lower() == 'start':
-                marker_blue.die()
-                break
-            if user_place.lower() == 'place':
-                time.sleep(0.20)
-                marker_blue.enable()
-                self.engine.display()
-                print("To place an unit, press ENTER. To stop placement, press ESC.")
-                while not marker_blue.disabled:
-                    time.sleep(0.01)
-                continue
+        self.call_choosing_menu(marker_blue)
         self.engine.start_game()
 
     def menu(self):
@@ -235,6 +214,28 @@ class Menu:
         time.sleep(5)
         self.engine.start_game()
 
+    def call_choosing_menu(self, marker):
+        while True:
+            self.engine.flush()
+            user_place = input('Type "place" to start placing the units. Current unit: {}'.format(marker.unit) +
+                               '\n\n'
+                               'Type "unit" to select an unit'
+                               '\n\n'
+                               'Type "done" to start when your army is ready: ')
+            if user_place.lower() == 'unit':
+                marker.unit = self.choose_unit()
+            if user_place.lower() == 'done':
+                marker.die()
+                break
+            if user_place.lower() == 'place':
+                time.sleep(0.3)
+                marker.enable()
+                self.engine.display()
+                print("To place an unit, press ENTER. To stop placement, press ESC.")
+                while not marker.disabled:
+                    time.sleep(0.5)
+                time.sleep(0.3)
+
     def random_encounter(self):
         blue_budget = random.randint(self.engine.size_x * 200, self.engine.size_y * 400)
         self.engine.generate_blue(blue_budget)
@@ -244,114 +245,5 @@ class Menu:
         time.sleep(5)
         marker = Marker(budget=blue_budget * 0.7, y=0, x=0,
                         inbound_x=round(self.engine.size_x / 2) - 1, engine=self.engine, team='Red')
-        while True:
-            self.engine.flush()
-            user_place = input('Type "place" to start placing the units. Current unit: {}'.format(marker.unit) +
-                               '\n\n'
-                               'Type "unit" to select an unit'
-                               '\n\n'
-                               'Type "start" to start when your army is ready: ')
-            if user_place.lower() == 'unit':
-                marker.unit = self.choose_unit()
-            if user_place.lower() == 'start':
-                marker.die()
-                self.engine.start_game()
-                return
-            if user_place.lower() == 'place':
-                time.sleep(0.3)
-                marker.enable()
-                self.engine.display()
-                print("To place an unit, press ENTER. To stop placement, press ESC.")
-                while not marker.disabled:
-                    time.sleep(0.5)
-
-
-class Marker:
-    def __init__(self, y, x, engine, inbound_x, team, budget):
-        self.inbound_x = inbound_x
-        self.y = y
-        self.x = x
-        self.engine = engine
-        self.previous_position = self.engine.gamemap[y][x]
-        self.engine.gamemap[y][x] = Fore.LIGHTYELLOW_EX + 'X' + Fore.RESET
-        self.disabled = True
-        self.unit = "Warrior"
-        self.budget = budget
-        self.listener = keyboard.Listener(
-            on_press=self.on_press,
-            on_release=self.on_release)
-        self.team = team
-        self.sides = {'right': [0, 1],
-                      'left': [0, -1],
-                      'up': [-1, 0],
-                      'down': [1, 0]}
-        self.listener.start()
-
-    def check_inbounds(self, y, x):
-        if y > self.engine.size_y - 1 or y < 0 or x > self.engine.size_x - 1 or x < 0 or x > self.inbound_x:
-            return False
-        else:
-            return True
-
-    def move(self, side):
-        move_side = self.sides.get(side)
-        if self.check_inbounds(self.y + move_side[0], self.x + move_side[1]):
-            self.engine.gamemap[self.y][self.x] = self.previous_position
-            self.y += move_side[0]
-            self.x += move_side[1]
-            self.previous_position = copy.deepcopy(self.engine.gamemap[self.y][self.x])
-            self.engine.gamemap[self.y][self.x] = Fore.LIGHTYELLOW_EX + 'X' + Fore.RESET
-            self.engine.flush()
-            for y in self.engine.gamemap:
-                print('  '.join(y))
-            try:
-                print("To place an unit, press ENTER. To stop placement, press ESC. Budget: {}".format(round(self.budget)))
-            except OverflowError:
-                print("To place an unit, press ENTER. To stop placement, press ESC.")
-
-    def on_press(self, key):
-        keys_list = {keyboard.Key.up: 'up',
-                     keyboard.Key.down: 'down',
-                     keyboard.Key.left: 'left',
-                     keyboard.Key.right: 'right'}
-        if key in keys_list.keys() and not self.disabled:
-            self.move(keys_list.get(key))
-
-    def on_release(self, key):
-        if self.disabled:
-            return
-        if key == keyboard.Key.esc:
-            time.sleep(0.1)
-            self.disable()
-            time.sleep(0.1)
-        elif key == keyboard.Key.enter:
-            if not self.engine.check_entity(self.y, self.x):
-                unit = self.engine.spawn_unit(y=self.y, x=self.x, team=self.team)
-                if unit.cost > self.budget:
-                    self.remove_unit(unit)
-                    print(Fore.RED + "Unit too expensive!" + Fore.RESET)
-                    return
-                self.budget -= unit.cost
-                try:
-                    print("Unit {} placed! Budget left: {}".format(unit.name, round(self.budget)))
-                except OverflowError:
-                    print("Unit {} placed!".format(unit.name))
-                self.previous_position = copy.deepcopy(self.engine.gamemap[self.y][self.x])
-                return
-            else:
-                print(Fore.RED + "Unit already exists here!" + Fore.RESET)
-
-    def remove_unit(self, unit):
-        self.engine.gamemap[self.y][self.x] = Fore.LIGHTYELLOW_EX + 'X' + Fore.RESET
-        self.engine.techmap[self.y][self.x] = '.'
-        unit.team_dict.get(unit.team.lower()).remove(unit)
-
-    def die(self):
-        self.engine.gamemap[self.y][self.x] = self.previous_position
-        self.listener.stop()
-
-    def disable(self):
-        self.disabled = True
-
-    def enable(self):
-        self.disabled = False
+        self.call_choosing_menu(marker)
+        self.engine.start_game()

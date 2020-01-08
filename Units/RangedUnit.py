@@ -1,6 +1,3 @@
-# import module
-from . import Unit
-# import class from module
 from .Unit import Unit
 from colorama import Fore
 import time
@@ -15,9 +12,9 @@ class RangedUnit(Unit):
         self.reload = reload_time
 
     def check_enemies(self):
-        coord_list = [self.map_eng.techmap[self.y],
-                      self.map_eng.techmap[self.y+1] if self.check_inbounds(self.y+1, self.x) else [],
-                      self.map_eng.techmap[self.y-1] if self.check_inbounds(self.y-1, self.x) else []]
+        coord_list = [self.engine.techmap[self.y],
+                      self.engine.techmap[self.y + 1] if self.engine.check_inbounds(self.y + 1, self.x) else [],
+                      self.engine.techmap[self.y - 1] if self.engine.check_inbounds(self.y - 1, self.x) else []]
         if self.reload < self.reload_time:
             self.reload += 1
             print(self.name + ' reloading....')
@@ -25,19 +22,19 @@ class RangedUnit(Unit):
             return
         for y in coord_list:
             for x in y:
-                if hasattr(x, 'team') and x.team != self.team and self.reload == self.reload_time:
+                if x and x.team != self.team and self.reload == self.reload_time:
                     self.attack(x)
                     self.reload = 0
                     return
-        for y in self.map_eng.techmap:
+        for y in self.engine.techmap:
             for x in y:
-                if hasattr(x, 'team') and x.team != self.team:
+                if x and x.team != self.team:
                     self.move_on_enemy(x.y, x.x)
                     return
 
     def attack(self, entity):
         entity.hp -= self.damage
-        Bullet(enemy_y=entity.y, enemy_x=entity.x, y=self.y, x=self.x, engine=self.map_eng)
+        Bullet(enemy_y=entity.y, enemy_x=entity.x, y=self.y, x=self.x, engine=self.engine)
         print('{} shoots {}! Damage: {},  HP of {} left: {}!'.format(
             self.name, entity.name, self.damage, entity.name, entity.hp))
         time.sleep(1)
@@ -55,6 +52,7 @@ class Bullet:
         self.x = x
         self.previous_position = copy.deepcopy(self.map[self.y][self.x])
         self.shoot()
+
     def shoot(self):
         while not self.check_attackable():
             self.move_on_enemy(self.enemy_y, self.enemy_x)

@@ -1,4 +1,3 @@
-import os
 from engine import *
 from colorama import init
 
