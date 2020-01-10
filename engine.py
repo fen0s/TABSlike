@@ -158,21 +158,20 @@ class Menu:
             self.engine.flush()
             user_prompt = input(
                 'This is choosing menu. Type "help" to see available units. '
-                'To choose an unit, type its name here. To exit menu, type "exit": ')
+                'To choose an unit, type its name here. To exit menu, type "exit": '
+                'Current unit: {}'.format(user_unit))
             if user_prompt.lower() == 'exit':
                 break
             if user_prompt.lower() == 'help':
                 print("Available units:" + '\n' + '\n'.join(list(self.engine.unitdict.keys())))
-                time.sleep(5)
+                input('\n Press ENTER to continue...')
                 continue
             if user_prompt.title() in list(self.engine.unitdict.keys()):
                 user_unit = user_prompt.title()
-                print('Current unit: ' + user_prompt.title())
-                time.sleep(3)
                 continue
             else:
                 print("\n" + Fore.RED + "No unit with such name!" + Fore.RESET)
-                time.sleep(3)
+                time.sleep(2)
                 continue
         return user_unit
 
