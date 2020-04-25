@@ -40,13 +40,14 @@ class Unit:
 # **** Attack an entity. Entity must be Unit class, don't forget it! ****
     def attack(self, entity):
         entity.hp -= self.damage
-        entity_copy = copy.deepcopy(self.engine.gamemap[entity.y][entity.x])
+        
         self.engine.gamemap[entity.y][entity.x] = Fore.LIGHTMAGENTA_EX + '/' + Fore.RESET
         self.engine.display()
         print('{} attacks {}! Damage: {},  HP of {} left: {}!'.format(
             self.name, entity.name, self.damage, entity.name, entity.hp))
         time.sleep(0.5)
-        self.engine.gamemap[entity.y][entity.x] = entity_copy
+        
+        self.engine.gamemap[entity.y][entity.x] = entity.symbol
         if entity.hp <= 0:
             entity.die()
 
@@ -54,7 +55,7 @@ class Unit:
         print('Oh no! {} dies!'.format(self.name))
         time.sleep(0.5)
         self.engine.make_empty(self.y, self.x)
-        self.team_dict.get(self.team.lower()).remove(self)
+        self.team_dict.get( self.team.lower() ).remove(self)
 
 # **** Check X and Y coordinates for presence of unit with another team. ****
     def check_enemies(self):
@@ -68,9 +69,10 @@ class Unit:
     def check_attackable(self):
         coord_list = list(itertools.product([self.y - 1, self.y, self.y + 1], [self.x - 1, self.x, self.x + 1]))
         for coord in coord_list:
-            try:
-                if self.engine.techmap[coord[0]][coord[1]] and self.engine.techmap[coord[0]][coord[1]].team != self.team:
-                    self.attack(self.engine.techmap[coord[0]][coord[1]])
+            try: 
+                position = self.engine.techmap[coord[0]][coord[1]]
+                if position and position.team != self.team:
+                    self.attack(position)
                     return True
             except IndexError:
                 continue
