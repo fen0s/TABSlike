@@ -15,11 +15,9 @@ class Unit:
         self.team = team
         self.cost = cost
         self.symbol = {'blue': Fore.LIGHTCYAN_EX + "{}".format(name[0].upper()) + Fore.RESET,
-                       'red': Fore.LIGHTRED_EX + '{}'.format(name[0].upper()) + Fore.RESET}.get(self.team.lower())
+                       'red': Fore.LIGHTRED_EX + '{}'.format(name[0].upper()) + Fore.RESET}[self.team.lower()]
         self.team_dict = {'blue': map_engine.alive_list[1],
                           'red': map_engine.alive_list[0]}
-        self.team_dict.get(self.team.lower()).append(self)
-        map_engine.place_both(y, x, self, self.symbol)
 
     def move(self, side):
         if self.check_attackable():
@@ -29,12 +27,13 @@ class Unit:
                  'up': [-1, 0],
                  'down': [1, 0]}
         move_side = sides.get(side)
-        if self.engine.check_inbounds(self.y + move_side[0], self.x + move_side[1]) \
-                and not self.engine.check_entity(self.y + move_side[0], self.x + move_side[1]):
+        move_coords = [self.y + move_side[0], self.x + move_side[1]]
+        if self.engine.check_inbounds(move_coords[0], move_coords[1]) \
+                and not self.engine.check_entity(move_coords[0], move_coords[1]):
 
             self.engine.make_empty(self.y, self.x)
-            self.y += move_side[0]
-            self.x += move_side[1]
+            self.y = move_coords[0]
+            self.x = move_coords[1]
             self.engine.place_both(self.y, self.x, tech_place=self, game_place=self.symbol)
 
 # **** Attack an entity. Entity must be Unit class, don't forget it! ****
@@ -43,8 +42,7 @@ class Unit:
         
         self.engine.gamemap[entity.y][entity.x] = Fore.LIGHTMAGENTA_EX + '/' + Fore.RESET
         self.engine.display()
-        print('{} attacks {}! Damage: {},  HP of {} left: {}!'.format(
-            self.name, entity.name, self.damage, entity.name, entity.hp))
+        print(f'{self.name} attacks {entity.name}! Damage: {self.damage},  HP of {entity.name} left: {entity.hp}')
         time.sleep(0.5)
         
         self.engine.gamemap[entity.y][entity.x] = entity.symbol
@@ -52,7 +50,7 @@ class Unit:
             entity.die()
 
     def die(self):
-        print('Oh no! {} dies!'.format(self.name))
+        print(f'Oh no! {self.name} died!')
         time.sleep(0.5)
         self.engine.make_empty(self.y, self.x)
         self.team_dict.get( self.team.lower() ).remove(self)
@@ -60,23 +58,28 @@ class Unit:
 # **** Check X and Y coordinates for presence of unit with another team. ****
     def check_enemies(self):
         for row in self.engine.techmap:
-            for elem in row:
-                if elem and elem.team != self.team:
-                    coords = [elem.y, elem.x]
-                    self.move_on_enemy(coords[0], coords[1])
+            for entity in row:
+                if entity and entity.team != self.team:
+                    self.move_on_enemy(entity.y, entity.x)
                     return
 
     def check_attackable(self):
-        coord_list = list(itertools.product([self.y - 1, self.y, self.y + 1], [self.x - 1, self.x, self.x + 1]))
-        for coord in coord_list:
-            try: 
-                position = self.engine.techmap[coord[0]][coord[1]]
-                if position and position.team != self.team:
-                    self.attack(position)
-                    return True
-            except IndexError:
-                continue
+        entities = self.check_surroundings(self.y, self.x)
+        for entity in entities:
+            self.attack(entity)
+            return True
         return False
+    
+    def check_surroundings(self, y_coord, x_coord):
+        y_coord -= 1 #to check y level above unit
+        enemies = []
+        for _ in range(3):
+                if self.engine.check_inbounds(y_coord, x_coord-1) and self.engine.check_inbounds(y_coord, x_coord+2):
+                    for entity in self.engine.techmap[y_coord][x_coord-1:x_coord+1]:
+                        if entity and entity.team != self.team:
+                            enemies.append(entity)
+                y_coord+=1
+        return enemies
 
 # **** Move to enemy unit. ****
     def move_on_enemy(self, enemy_y, enemy_x):
@@ -88,3 +91,7 @@ class Unit:
             self.move('left')
         if enemy_x > self.x:
             self.move('right')
+    
+    def place(self):
+        self.team_dict.get(self.team.lower()).append(self)
+        self.engine.place_both(self.y, self.x, self, self.symbol)

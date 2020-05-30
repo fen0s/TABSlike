@@ -8,19 +8,9 @@ import itertools
 class ExplosiveUnit(RangedUnit):
 
     def attack(self, entity):
+        if self.check_attackable():
+            return
         coords_list = list(itertools.product([entity.y - 1, entity.y, entity.y + 1], [entity.x - 1, entity.x, entity.x + 1]))
-        close_quarters = list(itertools.product([self.y - 1, self.y, self.y + 1], [self.x - 1, self.x, self.x + 1]))
-        for coord in close_quarters:
-            try:
-                if self.engine.techmap[coord[1]][coord[0]] and \
-                  self.engine.techmap[coord[1]][coord[0]].team != self.team:
-                    self.engine.techmap[coord[1]][coord[0]].hp -= 2
-                    self.engine.display()
-                    print(self.name + ' attacks ' + self.engine.techmap[coord[1]][coord[0]].name + '!' + ' Damage: 2')
-                    time.sleep(1)
-                    return
-            except IndexError:
-                continue
         map_copy = copy.deepcopy(self.engine.gamemap)
         for coord in coords_list:
             try:
