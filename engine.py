@@ -63,40 +63,28 @@ class GameMap:
         else:
             return True
 
-    def spawn_unit(self, unit, y, x, team):
+    def get_unit(self, unit, y, x, team):
         """Spawn unit, returning their instance from unitdict."""
         return self.unitdict.get(unit)(y=y, x=x, team=team)
 
-    def generate_blue(self, budget):
+    def generate_team(self, budget, team):
         """Generate blue team of the map. Generated on the right side."""
+        team_coords = {
+            'Blue': lambda: [random.randint(self.size_y // 2, self.size_y - 1),
+                        random.randint(self.size_x // 2, self.size_x - 1)],
+            
+            'Red': lambda: [random.randint(0, self.size_y // 2 - 1),
+                        random.randint(0, self.size_x // 2 - 1)]                       
+        }
         unit_names = list(self.unitdict.keys())
         while budget > 199:  # while budget > min_unit_price
-            b_coords = [random.randint(round(self.size_y / 2), self.size_y - 1),
-                        random.randint(round(self.size_x / 2), self.size_x - 1)]
-            if not self.check_entity(b_coords[0], b_coords[1]):
-                unit = self.spawn_unit(unit=random.choice(unit_names), y=b_coords[0], x=b_coords[1], team='Blue')
-                if unit.cost > budget:
-                    self.place_both(b_coords[0], b_coords[1], None, '.')
-                    self.alive_list[1].remove(unit)
-                    continue
+            coords = team_coords[team]()
+            unit = self.get_unit(unit=random.choice(unit_names), y=coords[0], x=coords[1], team=team)
+            if not self.check_entity(coords[0], coords[1]) and not unit.cost > budget:
+                unit.place()
                 budget -= unit.cost
             else:
-                continue
-
-    def generate_red(self, budget):
-        """Generate red team of the map. Generated on the left side."""
-        unit_names = list(self.unitdict.keys())
-        while budget > 199:
-            r_coords = [random.randint(0, round(self.size_y / 2) - 1),
-                        random.randint(0, round(self.size_x / 2) - 1)]
-            if not self.check_entity(r_coords[0], r_coords[1]):
-                unit = self.spawn_unit(unit=random.choice(unit_names), y=r_coords[0], x=r_coords[1], team='Red')
-                if unit.cost > budget:
-                    self.place_both(r_coords[0], r_coords[1], None, '.')
-                    self.alive_list[0].remove(unit)
-                    continue
-                budget -= unit.cost
-            else:
+                del(unit)
                 continue
 
     def generate_map(self):
@@ -106,12 +94,13 @@ class GameMap:
             gamemap.append(['.' for _ in range(self.size_x)])
         return gamemap
 
-    def display(self):
+    def display(self, delay=1):
         """**** Display the map itself. ****"""
         self.flush()
         for row in self.gamemap:
             print('  '.join(row))
-        time.sleep(1)
+        if delay:
+            time.sleep(delay)
 
     def place(self, entity, y, x):
         """**** Place the symbol on frontend map. ****"""
@@ -192,10 +181,10 @@ class Menu:
         1) Random encounter
         2) Sandbox mode
         3) Random battle''' + Fore.RESET)
-        choice = input()
         choices = {'1': self.random_encounter,
                   '2': self.sandbox_mode,
                   '3': self.random_battle}
+        choice = input()
         if choices[choice]:
             choices[choice]()
         else:
@@ -203,8 +192,8 @@ class Menu:
             self.menu()
 
     def random_battle(self):
-        self.engine.generate_blue(random.randint(self.engine.size_x * 300, self.engine.size_y * 400))
-        self.engine.generate_red(random.randint(self.engine.size_x * 300, self.engine.size_y * 400))
+        self.engine.generate_team(random.randint(self.engine.size_x * 300, self.engine.size_y * 400), 'Blue')
+        self.engine.generate_team(random.randint(self.engine.size_x * 300, self.engine.size_y * 400), 'Red')
         self.engine.display()
         print("Here's your battle! Starting in 5 seconds...")
         time.sleep(5)
@@ -234,7 +223,7 @@ class Menu:
 
     def random_encounter(self):
         blue_budget = random.randint(self.engine.size_x * 200, self.engine.size_y * 400)
-        self.engine.generate_blue(blue_budget)
+        self.engine.generate_team(blue_budget, 'Blue')
         self.engine.display()
         print(Fore.LIGHTYELLOW_EX + "That's enemy army! Now, place your units..." + Fore.RESET)
         print('Your budget: {}'.format(round(blue_budget * 0.7)))
