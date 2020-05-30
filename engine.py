@@ -165,14 +165,12 @@ class Menu:
             if user_prompt.lower() == 'help':
                 print("Available units:" + '\n' + '\n'.join(list(self.engine.unitdict.keys())))
                 input('\n Press ENTER to continue...')
-                continue
             if user_prompt.title() in list(self.engine.unitdict.keys()):
                 user_unit = user_prompt.title()
-                continue
             else:
                 print("\n" + Fore.RED + "No unit with such name!" + Fore.RESET)
                 time.sleep(2)
-                continue
+            continue
         return user_unit
 
     def sandbox_mode(self):
@@ -195,12 +193,11 @@ class Menu:
         2) Sandbox mode
         3) Random battle''' + Fore.RESET)
         choice = input()
-        if choice == '1':
-            self.random_encounter()
-        if choice == '2':
-            self.sandbox_mode()
-        if choice == '3':
-            self.random_battle()
+        choices = {'1': self.random_encounter,
+                  '2': self.sandbox_mode,
+                  '3': self.random_battle}
+        if choices[choice]:
+            choices[choice]()
         else:
             print('Not an option.')
             self.menu()
